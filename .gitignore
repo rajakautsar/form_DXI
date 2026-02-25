@@ -1,0 +1,44 @@
+# Git ignore patterns for the project
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE & Editor
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Uploaded files (should not be committed)
+uploads/
+submissions/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+temp/
+
+# Database backups
+*.sql
+*.dump
+
+# OS specific
+.Spotlight-V100
+.Trashes

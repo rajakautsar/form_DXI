@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kompetisi Fotografi Bawah Laut - Diver eXperience Indonesia</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- BANNER HEADER -->
+    <!-- BANNER HEADER -->
+    <header class="banner-header"></header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="container">
+        <form class="competition-form" id="competitionForm" enctype="multipart/form-data">
+            
+            <!-- SECTION A: DATA DIRI PESERTA -->
+            <section class="form-section">
+                <div class="section-header">
+                    <div class="section-number">A</div>
+                    <div>
+                        <h2>Data Diri Peserta</h2>
+                        <p>Informasi pribadi peserta kompetisi</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="fullName" class="required">Nama Lengkap</label>
+                    <input type="text" id="fullName" name="fullName" placeholder="Masukkan nama lengkap Anda" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phoneNumber" class="required">No. HP (WhatsApp)</label>
+                        <input type="text" id="phoneNumber" name="phoneNumber" inputmode="numeric" pattern="[0-9+\-]*" placeholder="+62..." required>
+                        <small>Format: +62 atau 08</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="instagram" class="required">Instagram</label>
+                        <input type="text" id="instagram" name="instagram" placeholder="@username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="address" class="required">Alamat (Domisili)</label>
+                    <textarea id="address" name="address" placeholder="Masukkan alamat lengkap domisili Anda" rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="proofFile" class="required">Bukti/Screenshot Follow dan Repost</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="proofFile" name="proofFile" accept="image/*" required>
+                        <span class="file-input-label">
+                            <i class="icon">📸</i>
+                            <span>Pilih File atau Drag & Drop</span>
+                        </span>
+                    </div>
+                    <small>Format: JPG, PNG (Max: 5MB)</small>
+                </div>
+            </section>
+
+            <!-- SECTION B: KATEGORI LOMBA -->
+            <section class="form-section">
+                <div class="section-header">
+                    <div class="section-number">B</div>
+                    <div>
+                        <h2>Kategori Lomba</h2>
+                        <p>Pilih kategori fotografi yang Anda ikuti</p>
+                    </div>
+                </div>
+
+                <div class="category-note">
+                    <strong>Catatan:</strong> File karya akan dipisahkan berdasarkan kategori untuk memudahkan proses penjurian.
+                </div>
+
+                <div class="category-container">
+                    <div class="category-card" data-category="macro">
+                        <input type="radio" id="macroAngle" name="category" value="macro" required>
+                        <label for="macroAngle" class="category-label">
+                            <div class="category-header">
+                                <h3>🔍 Macro Angle</h3>
+                            </div>
+                            <div class="category-description">
+                                <p>Fokus pada detail kecil bawah laut seperti:</p>
+                                <ul>
+                                    <li>Nudibranch (siput laut berlendir)</li>
+                                    <li>Shrimp (udang-udangan)</li>
+                                    <li>Pygmy Seahorse (kuda laut kerdil)</li>
+                                    <li>Tekstur karang dan organisme kecil</li>
+                                </ul>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="category-card" data-category="wide">
+                        <input type="radio" id="wideAngle" name="category" value="wide" required>
+                        <label for="wideAngle" class="category-label">
+                            <div class="category-header">
+                                <h3>🌊 Wide Angle</h3>
+                            </div>
+                            <div class="category-description">
+                                <p>Fokus pada lanskap bawah laut seperti:</p>
+                                <ul>
+                                    <li>Reefscape (pemandangan terumbu karang)</li>
+                                    <li>Diver Interaction (interaksi penyelam)</li>
+                                    <li>Schooling Fish (gerombolan ikan)</li>
+                                    <li>Big Marine Life (kehidupan laut besar)</li>
+                                </ul>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION C: UPLOAD KARYA -->
+            <section class="form-section">
+                <div class="section-header">
+                    <div class="section-number">C</div>
+                    <div>
+                        <h2>Upload Karya</h2>
+                        <p>Unggah foto kompetisi dan informasi teknis</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="photoTitle" class="required">Judul atau Tema Karya</label>
+                    <input type="text" id="photoTitle" name="photoTitle" placeholder="Berikan judul atau tema untuk karya anda" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="photoFile" class="required">File Karya (Maksimal 3 Foto)</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="photoFile" name="photoFile[]" accept="image/jpeg,image/png,image/tiff" multiple required>
+                        <span class="file-input-label">
+                            <i class="icon">🖼️</i>
+                            <span>Pilih File Foto (Maks 3) atau Drag & Drop</span>
+                        </span>
+                    </div>
+                    <small>Format: JPG, PNG, TIFF | Maksimal 3 file | Masing-masing max 20MB</small>
+                    
+                    <!-- File List Display -->
+                    <div id="photoFileList" class="file-list" style="display: none;">
+                        <div class="file-list-header">
+                            <h4>📋 File yang Sudah Dipilih</h4>
+                        </div>
+                        <div id="photoFileItems" class="file-list-items"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="exifFile" class="required">File Exif Data</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="exifFile" name="exifFile" accept=".txt,.pdf,.xlsx,.xls,.png" required>
+                        <span class="file-input-label">
+                            <i class="icon">📋</i>
+                            <span>Pilih File Exif Data atau Drag & Drop</span>
+                        </span>
+                    </div>
+                    <small>Format: TXT, PDF, XLSX, PNG (Max: 5MB) | Berisi data teknis: Kamera, Lensa, Shutter Speed, Aperture, ISO, Lokasi</small>
+                </div>
+            </section>
+
+            <!-- SECTION D: PERNYATAAN PESERTA -->
+            <section class="form-section">
+                <div class="section-header">
+                    <div class="section-number">D</div>
+                    <div>
+                        <h2>Pernyataan Peserta</h2>
+                        <p>Syarat dan ketentuan yang harus disepakati</p>
+                    </div>
+                </div>
+
+                <div class="agreement-box">
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="agreement" name="agreement" required>
+                        <label for="agreement" class="agreement-label">Saya menyatakan bahwa:</label>
+                    </div>
+
+                    <div class="agreement-items">
+                        <div class="agreement-item">
+                            <span class="check-mark">✓</span>
+                            <p>Foto yang dikirim adalah karya asli saya.</p>
+                        </div>
+                        <div class="agreement-item">
+                            <span class="check-mark">✓</span>
+                            <p>Foto diambil selama periode kompetisi berlangsung.</p>
+                        </div>
+                        <div class="agreement-item">
+                            <span class="check-mark">✓</span>
+                            <p>Tidak melakukan manipulasi berlebihan (composite/menggabungkan foto).</p>
+                        </div>
+                        <div class="agreement-item">
+                            <span class="check-mark">✓</span>
+                            <p>Bersedia mengikuti seluruh peraturan kompetisi.</p>
+                        </div>
+                        <div class="agreement-item">
+                            <span class="check-mark">✓</span>
+                            <p>Memberikan izin kepada panitia untuk menggunakan foto untuk keperluan publikasi dengan tetap mencantumkan nama fotografer.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FORM ACTIONS -->
+            <div class="form-actions">
+                <button type="reset" class="btn btn-secondary">Bersihkan Form</button>
+                <button type="submit" class="btn btn-primary">Daftarkan Karya</button>
+            </div>
+        </form>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 Diver eXperience Indonesia | Kompetisi Fotografi Bawah Laut</p>
+            <p>Hasil penjurian akan diumumkan melalui Instagram @DXI_Official</p>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script src="assets/js/script.js"></script>
+</body>
+</html>
