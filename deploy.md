@@ -547,6 +547,302 @@ find uploads/ -type f -mtime +180 -exec mv {} backups/ \;
 
 ---
 
+## 9. DEPLOYMENT DENGAN SUBDOMAIN (underwatershootout.deepextremeindonesia.com)
+
+### 9.1 Persiapan Subdomain di Hostinger
+
+1. **Login ke hPanel Hostinger**
+   - Pilih domain `deepextremeindonesia.com`
+   - Cari menu **Subdomains** atau **Addon Domains**
+
+2. **Buat Subdomain `underwatershootout`**
+   - Nama Subdomain: `underwatershootout`
+   - Document Root: Biarkan auto (biasanya `/public_html`)
+   - **Save/Create**
+
+   Setelah create, subdomain akan dapat diakses di:
+   ```
+   http://underwatershootout.deepextremeindonesia.com/
+   ```
+
+### 9.2 Upload File ke Subdomain
+
+**PENTING: Struktur folder yang benar untuk SUBDOMAIN:**
+
+```
+underwatershootout.deepextremeindonesia.com/ (root)
+└── public_html/
+    ├── index.html                    ← Langsung di sini!
+    ├── process_form.php              ← Langsung di sini!
+    ├── assets/
+    │   ├── css/style.css
+    │   └── js/script.js
+    ├── admin/
+    │   ├── export.php
+    │   ├── export_csv.php
+    │   ├── export_zip.php
+    │   ├── export_page.html
+    │   └── export_csv.html
+    ├── config/
+    ├── uploads/                      ← PENTING!
+    │   ├── submissions.json
+    │   ├── macro/
+    │   ├── wide/
+    │   ├── proof/
+    │   └── exif/
+    └── README.md
+```
+
+**❌ JANGAN gunakan struktur ini (SALAH):**
+```
+public_html/
+└── form_DXI/                 ← SALAH! Akan jadi /form_DXI/
+    └── index.html
+```
+
+### 9.3 Deploy via SSH (Recommended)
+
+**Step 1: SSH ke Hostinger**
+```bash
+ssh -p 2222 username@underwatershootout.deepextremeindonesia.com
+# atau
+ssh -p 2222 username@hostinger.com
+# Input password
+```
+
+**Step 2: Navigasi ke public_html Subdomain**
+```bash
+# Cek lokasi
+cd public_html
+pwd
+
+# Harusnya output: /home/yourusername/public_html
+```
+
+**Step 3: Clone GitHub Repository**
+```bash
+# Clone langsung ke public_html (jangan di subfolder)
+git clone https://github.com/username/form-dxi.git .
+
+# Atau jika sudah ada, pull update
+git pull origin main
+```
+
+**Step 4: Buat Folder Uploads**
+```bash
+# Pastikan folder uploads ada dengan subfolder
+mkdir -p uploads/macro uploads/wide uploads/proof uploads/exif
+
+# Set permissions
+chmod 755 uploads uploads/macro uploads/wide uploads/proof uploads/exif
+chmod 755 config admin assets
+
+# Set file permissions
+chmod 644 *.html *.php *.md
+chmod 644 assets/css/*
+chmod 644 assets/js/*
+chmod 644 admin/*
+```
+
+**Step 5: Verify File Permissions**
+```bash
+# Check struktur
+ls -la
+
+# Output yang diharapkan:
+# -rw-r--r--  index.html        (644)
+# -rw-r--r--  process_form.php  (644)
+# drwxr-xr-x  uploads/          (755)
+# drwxr-xr-x  assets/           (755)
+```
+
+### 9.4 Deploy via File Manager (Alternatif)
+
+Jika tidak bisa SSH:
+
+1. **Di Local Machine:**
+   - Zip semua file (kecuali `uploads/` dan `.git/`)
+   - Nama zip: `form-dxi.zip`
+
+2. **Di Hostinger File Manager:**
+   - Buka subdomain `underwatershootout`
+   - Masuk folder `public_html`
+   - Drag & drop `form-dxi.zip`
+   - Klik **Extract**
+   - Jika ada konflik file, pilih **Replace**
+
+3. **Buat Folder uploads:**
+   - Klik **New Folder** → `uploads`
+   - Masuk folder `uploads`
+   - Buat subfolder: `macro`, `wide`, `proof`, `exif`
+
+4. **Set Permissions:**
+   - Klik folder → **Properties** → **Change Permissions**
+   - Set: `755` (baca/tulis/execute untuk owner, read-only untuk group dan public)
+
+### 9.5 Update `process_form.php` untuk Production
+
+Sesuaikan CORS header dan upload path:
+
+**Edit `process_form.php` Line 17-18:**
+
+Dari:
+```php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+```
+
+Ke:
+```php
+header('Access-Control-Allow-Origin: http://underwatershootout.deepextremeindonesia.com');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
+```
+
+**Upload path yang benar (Line 32):**
+
+```php
+// Buat folder uploads jika belum ada
+$uploadDir = __DIR__ . '/uploads/';
+$macroDir = $uploadDir . 'macro/';
+$wideDir = $uploadDir . 'wide/';
+$proofDir = $uploadDir . 'proof/';
+
+// Ini sudah benar dengan __DIR__ relative path
+// Tidak perlu ubah untuk subdomain
+```
+
+### 9.6 Testing Setelah Deploy
+
+**Test 1: Akses URL**
+```
+http://underwatershootout.deepextremeindonesia.com/
+```
+
+**Expected Result:**
+- ✅ Form tampil dengan styling (background color, form section)
+- ✅ Bisa scroll melihat semua section
+- ✅ Input field bisa di-klik
+- ✅ Upload zone muncul
+
+**Test 2: Check DevTools (F12)**
+```
+Console → Pastikan tidak ada error merah
+Network → Pastikan semua assets loaded (assets/css/style.css, assets/js/script.js)
+```
+
+**Test 3: Submit Form**
+1. Isi semua field yang required (*)
+2. Upload file dummy
+3. Klik Submit
+
+**Expected Result:**
+- ✅ File terupload ke `uploads/macro/` atau `uploads/wide/`
+- ✅ Response berhasil (notification muncul)
+- ✅ File tersimpan di server
+
+**Test 4: Check File sudah tersimpan**
+
+Via SSH:
+```bash
+# Cek file yang terupload
+ls -lh uploads/macro/
+ls -lh uploads/wide/
+ls -lh uploads/proof/
+
+# Cek submissions.json
+cat uploads/submissions.json
+```
+
+### 9.7 Troubleshooting untuk Subdomain
+
+#### **Problem: 404 Not Found**
+
+**Penyebab:**
+- File ada di folder `form_DXI` (tidak di root public_html)
+- Document root subdomain salah
+
+**Solusi:**
+```bash
+# Check struktur
+pwd
+ls -la
+
+# Seharusnya output langsung menunjukkan:
+# index.html
+# process_form.php
+# assets/
+# uploads/
+
+# Jika ada folder form_DXI, pindahkan file-nya:
+cp -r form_DXI/* .
+rm -rf form_DXI
+
+# Verify
+ls -la
+```
+
+#### **Problem: Styling tidak muncul (blank page)**
+
+**Penyebab:** Path assets salah di HTML
+
+**Solusi:** Check `index.html` line 7:
+```html
+<link rel="stylesheet" href="assets/css/style.css">
+```
+
+Harus relative path seperti di atas, BUKAN:
+```html
+<!-- SALAH -->
+<link rel="stylesheet" href="/form_DXI/assets/css/style.css">
+```
+
+#### **Problem: Form tidak bisa submit**
+
+**Penyebab:** Folder `uploads` tidak ada atau permission salah
+
+**Solusi:**
+```bash
+# Create folders
+mkdir -p uploads/macro uploads/wide uploads/proof uploads/exif
+
+# Set permissions
+chmod 755 uploads uploads/macro uploads/wide uploads/proof uploads/exif
+
+# Verify
+ls -ld uploads/
+```
+
+#### **Problem: 500 Internal Server Error**
+
+**Solusi:** Check error log
+
+Via SSH:
+```bash
+# View recent errors
+tail -50 error_log
+
+# Or live monitoring
+tail -f error_log
+```
+
+Look for errors di file `process_form.php` atau permission issues.
+
+### 9.8 Enable HTTPS (SSL)
+
+Biasanya Hostinger auto-enable SSL, tapi verify:
+
+1. **Di hPanel** → pilih subdomain
+2. Cari **SSL/TLS** → pastikan status **Active**
+3. Atau akses via:
+   ```
+   https://underwatershootout.deepextremeindonesia.com/
+   ```
+
+Jika belum ada SSL, bisa request free Let's Encrypt di Hostinger.
+
+---
+
 ## 📊 DEPLOYMENT CHECKLIST
 
 Sebelum go-live:
@@ -557,6 +853,12 @@ Sebelum go-live:
 - [ ] Semua file ter-commit dengan baik
 - [ ] GitHub repository accessible
 
+### Subdomain Setup (Important!)
+- [ ] Subdomain `underwatershootout` created di Hostinger
+- [ ] Document root menunjuk ke public_html yang benar
+- [ ] Dapat diakses di `http://underwatershootout.deepextremeindonesia.com/`
+- [ ] Files di public_html root (BUKAN di subfolder `form_DXI`)
+
 ### Hostinger Setup
 - [ ] SSH access tested & working
 - [ ] Folder structure created (`uploads/macro`, `wide`, `proof`, `exif`)
@@ -565,25 +867,29 @@ Sebelum go-live:
 - [ ] `.htpasswd` created untuk admin protection
 - [ ] PHP version 8.0+
 - [ ] Upload max filesize configured (20M)
+- [ ] Verify file locations (NOT in form_DXI subfolder)
 
 ### Production Configuration
-- [ ] `process_form.php` updated dengan production paths & CORS
+- [ ] `process_form.php` CORS header updated untuk subdomain
+- [ ] `process_form.php` upload paths benar (__DIR__ relative)
 - [ ] Error logging configured
-- [ ] HTTPS enabled (cek di hPanel, usually automatic)
-- [ ] Domain pointing correctly
+- [ ] HTTPS/SSL enabled (verify di hPanel)
+- [ ] Domain/Subdomain pointing correctly
 
 ### Testing
-- [ ] Form loads properly
+- [ ] Form loads properly di `http://underwatershootout.deepextremeindonesia.com/`
+- [ ] Styling & assets loaded (F12 Console no errors)
 - [ ] File upload working
-- [ ] Files saved to correct folder
+- [ ] Files saved to correct folder (uploads/macro, uploads/wide)
+- [ ] Submissions.json being created/updated
 - [ ] Admin panel accessible with password
 - [ ] Export CSV & ZIP working
-- [ ] Submissions.json being created/updated
 
 ### Final
 - [ ] Test dengan data real
 - [ ] Performance OK
 - [ ] No error di logs
+- [ ] HTTPS working (akses via https://underwatershootout.deepextremeindonesia.com/)
 - [ ] Backup setup in place
 
 ---
@@ -600,16 +906,67 @@ git pull origin main                # Pull from GitHub
 git log --oneline                   # View commit history
 ```
 
-### SSH (di Hostinger)
+### SSH (di Hostinger - Subdomain underwatershootout)
 ```bash
-cd public_html/form_DXI             # Navigate to folder
-ls -la                              # List files with permissions
-chmod 755 uploads                   # Change permissions
-mkdir -p uploads/macro              # Create directory
-pwd                                 # Print working directory
-cat uploads/submissions.json        # View JSON
-tail -f logs/php_errors.log         # Live log viewing
-du -sh .                            # Check folder size
+# Login ke Hostinger
+ssh -p 2222 username@hostinger.com
+# atau direct ke subdomain:
+ssh -p 2222 username@underwatershootout.deepextremeindonesia.com
+
+# Navigate ke public_html subdomain
+cd public_html
+pwd                                 # Verify lokasi: /home/username/public_html
+
+# Clone atau update dari GitHub
+git clone https://github.com/username/form-dxi.git .
+# atau
+git pull origin main
+
+# List files (harus langsung index.html, process_form.php, assets/, bukan form_DXI/)
+ls -la
+
+# Create uploads folder
+mkdir -p uploads/macro uploads/wide uploads/proof uploads/exif
+
+# Set permissions
+chmod 755 uploads uploads/macro uploads/wide uploads/proof uploads/exif
+chmod 755 assets admin config
+chmod 644 *.html *.php *.md
+chmod 644 assets/css/* assets/js/*
+
+# Verify permissions
+ls -la
+stat index.html | grep Access
+
+# Check submissions.json
+cat uploads/submissions.json
+tail -20 uploads/submissions.json | json_pp
+
+# Monitor uploads
+du -sh uploads/
+ls -lh uploads/macro/
+ls -lh uploads/wide/
+
+# View error log
+tail -50 error_log
+tail -f error_log        # Live monitoring (Press Ctrl+C to exit)
+
+# Check folder size
+du -sh .
+du -sh uploads/
+```
+
+### Test Command
+```bash
+# Verify form accessible
+curl -I http://underwatershootout.deepextremeindonesia.com/
+
+# Output should be:
+# HTTP/1.1 200 OK
+# Content-Type: text/html
+
+# View page source
+curl http://underwatershootout.deepextremeindonesia.com/ | head -20
 ```
 
 ### File Manager (Hostinger GUI)
@@ -617,6 +974,7 @@ du -sh .                            # Check folder size
 - Right-click file → Change Permissions → 644
 - Create new folder
 - Upload/Download files
+- Extract ZIP files
 
 ---
 
@@ -626,9 +984,10 @@ du -sh .                            # Check folder size
 - **Hostinger Help:** https://support.hostinger.com/
 - **PHP Manual:** https://www.php.net/manual/
 - **Apache .htaccess:** https://httpd.apache.org/docs/current/mod/mod_rewrite.html
+- **SSH Tutorial:** https://www.hostinger.com/tutorials/ssh-tutorial-how-does-ssh-work
 
 ---
 
 **Last Updated:** February 25, 2026
-**Version:** 1.0
+**Version:** 2.0 (Updated with Subdomain Configuration)
 **Status:** Production Ready ✅

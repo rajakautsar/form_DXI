@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Admin Dashboard - DXI</title>
+    <style>
+        :root{--bg:#f6f8fb;--card:#fff;--primary:#0066cc;--accent:#00a8cc;--danger:#dc2626;--muted:#657786}
+        *{box-sizing:border-box}
+        body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:var(--bg);color:#111}
+        .wrap{max-width:980px;margin:36px auto;padding:20px}
+        .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(16,24,40,0.06);margin-bottom:20px}
+        h1{margin:0 0 6px;font-size:24px;font-weight:700}
+        h2{margin:0 0 12px;font-size:18px;font-weight:600}
+        p.lead{margin:0;color:var(--muted);margin-bottom:18px}
+        .stats{display:flex;gap:12px;margin:18px 0;flex-wrap:wrap}
+        .stat{flex:1;min-width:150px;background:linear-gradient(180deg,#fff,#fbfdff);padding:14px;border-radius:10px;border:1px solid #eef3fb}
+        .stat .label{color:var(--muted);font-size:12px;margin-bottom:6px}
+        .stat .value{font-size:24px;font-weight:700;margin:0}
+        .actions{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+        .btn{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600;font-size:14px;transition:all 0.2s}
+        .btn:hover{opacity:0.9;transform:translateY(-1px)}
+        .btn--csv{background:#f7fafc;color:#059;box-shadow:0 2px 4px rgba(0,0,0,0.04)}
+        .btn--csv:hover{box-shadow:0 4px 8px rgba(0,0,0,0.08)}
+        .btn--zip{background:linear-gradient(90deg,var(--primary),var(--accent));color:#fff;box-shadow:0 2px 8px rgba(0,102,204,0.3)}
+        .btn--danger{background:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(220,38,38,0.3)}
+        .btn--danger:hover{background:#991b1b}
+        .btn:disabled{opacity:0.5;cursor:not-allowed}
+        .btn svg{width:18px;height:18px}
+        .note{margin-top:12px;color:var(--muted);font-size:14px}
+        .warning{margin-top:12px;background:#fef3c7;border:1px solid #fcd34d;padding:12px;border-radius:8px;color:#92400e;font-size:13px}
+        .preview{margin-top:20px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:#f9fafb;padding:12px;text-align:left;font-weight:600;border-bottom:2px solid #e5e7eb}
+        td{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+        tr:hover{background:#fafbfc}
+
+        /* Modal Styles */
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center}
+        .modal.active{display:flex}
+        .modal-content{background:var(--card);padding:24px;border-radius:12px;width:90%;max-width:400px;box-shadow:0 20px 25px rgba(0,0,0,0.15)}
+        .modal-content h3{margin:0 0 12px;font-size:18px}
+        .modal-content p{margin:0 0 16px;color:var(--muted);font-size:14px}
+        .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+        .modal-actions button{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;cursor:pointer;font-weight:600;transition:all 0.2s}
+        .modal-actions .btn-cancel{background:#f3f4f6;color:#111}
+        .modal-actions .btn-confirm{background:var(--danger);color:#fff;border-color:var(--danger)}
+        .modal-actions .btn-confirm:hover{background:#991b1b}
+
+        /* Password Input */
+        .form-group{margin-bottom:16px}
+        .form-group label{display:block;margin-bottom:6px;font-weight:600;font-size:14px}
+        .form-group input{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+        .form-group input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,102,204,0.1)}
+
+        .error-msg{color:var(--danger);font-size:13px;margin-top:4px;display:none}
+        .success-msg{color:#059;font-size:13px;margin-top:4px;display:none}
+
+        .section-title{margin-top:24px;padding-top:20px;border-top:2px solid #f1f5f9}
+        .section-title:first-child{margin-top:0;padding-top:0;border-top:none}
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <!-- Header -->
+        <div class="card">
+            <h1>🛡️ Admin Dashboard</h1>
+            <p class="lead">Kelola data pendaftaran peserta kompetisi fotografi DXI</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="card">
+            <h2>📊 Statistik</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="label">Total Submissions</div>
+                    <div class="value" id="totalSubs">-</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Foto Macro</div>
+                    <div class="value" id="macroCount">-</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Foto Wide</div>
+                    <div class="value" id="wideCount">-</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Total Foto</div>
+                    <div class="value" id="totalPhotos">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="card section-title">
+            <h2>📥 Export Data</h2>
+            <p class="lead">Download data pendaftaran dalam format CSV atau ZIP (CSV + semua foto)</p>
+            <div class="actions">
+                <form method="get" action="export_csv.php" style="margin:0">
+                    <button class="btn btn--csv" type="submit" title="Download CSV">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Download CSV
+                    </button>
+                </form>
+
+                <form method="get" action="export_zip.php" style="margin:0">
+                    <button class="btn btn--zip" type="submit" title="Download ZIP">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3v4h-8V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Download ZIP
+                    </button>
+                </form>
+            </div>
+            <div class="note">💡 CSV dapat dibuka di Excel. ZIP berisi CSV dan semua foto karya peserta.</div>
+        </div>
+
+        <!-- Data List -->
+        <div class="card">
+            <h2>📋 Data Submissions Terakhir</h2>
+            <div class="preview">
+                <table id="submissionsTable">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama</th>
+                            <th>Kategori</th>
+                            <th>Jumlah Foto</th>
+                            <th>Tanggal</th>
+                            <th>ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="6" style="text-align:center;color:var(--muted)">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card" style="background:#fef2f2;border:2px solid #fee2e2">
+            <h2 style="color:var(--danger)">⚠️ DANGER ZONE</h2>
+            <p class="lead">Operasi di bagian ini tidak dapat dibatalkan. Gunakan dengan hati-hati!</p>
+            
+            <div class="warning">
+                <strong>⚠️ Peringatan:</strong> Menghapus semua data akan menghapus submission.json dan semua file foto. Pastikan sudah backup sebelum melakukan aksi ini!
+            </div>
+
+            <div class="actions" style="margin-top:20px">
+                <button class="btn btn--danger" onclick="openDeleteModal()" title="Hapus semua data">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M10 7V4a1 1 0 011-1h2a1 1 0 011 1v3m-6 0h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Delete All Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3>🗑️ Hapus Semua Data?</h3>
+            <p>Aksi ini akan menghapus:</p>
+            <ul style="margin:0;padding-left:20px;font-size:13px;color:var(--muted)">
+                <li>File submissions.json</li>
+                <li>Semua file foto (macro, wide)</li>
+                <li>Semua file bukti (proof)</li>
+                <li>Semua file Exif data</li>
+            </ul>
+            <p style="color:var(--danger);font-weight:600;margin-top:12px">⚠️ Tidak bisa dibatalkan!</p>
+
+            <div class="form-group">
+                <label>Masukkan password admin untuk confirm:</label>
+                <input type="password" id="deletePassword" placeholder="Password admin" autocomplete="off">
+                <div class="error-msg" id="errorMsg"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Batal</button>
+                <button class="btn-confirm" onclick="confirmDelete()">Hapus Semua Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', loadData);
+
+        async function loadData() {
+            try {
+                const response = await fetch('get_stats.php');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalSubs').innerText = data.total_submissions || 0;
+                    document.getElementById('macroCount').innerText = data.macro_count || 0;
+                    document.getElementById('wideCount').innerText = data.wide_count || 0;
+                    document.getElementById('totalPhotos').innerText = data.total_photos || 0;
+
+                    // Load submissions table
+                    loadSubmissionsTable(data.submissions || []);
+                }
+            } catch (err) {
+                console.error('Load data error:', err);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger)">Error loading data</td></tr>';
+            }
+        }
+
+        function loadSubmissionsTable(submissions) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (!submissions || submissions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Belum ada submissions</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = submissions.map((sub, idx) => `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${escapeHtml(sub.fullName)}</td>
+                    <td><strong>${sub.category === 'macro' ? '🔍 Macro' : '🌊 Wide'}</strong></td>
+                    <td>${sub.photoCount || 0}</td>
+                    <td style="font-size:12px;color:var(--muted)">${formatDate(sub.timestamp)}</td>
+                    <td style="font-size:11px;color:var(--muted);font-family:monospace">${sub.id}</td>
+                </tr>
+            `).join('');
+        }
+
+        function openDeleteModal() {
+            document.getElementById('deleteModal').classList.add('active');
+            document.getElementById('deletePassword').focus();
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            document.getElementById('deletePassword').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+
+        async function confirmDelete() {
+            const password = document.getElementById('deletePassword').value;
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (!password) {
+                errorMsg.innerText = 'Masukkan password!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('delete_all.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'password=' + encodeURIComponent(password)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Semua data berhasil dihapus!');
+                    closeDeleteModal();
+                    loadData(); // Reload statistics
+                } else {
+                    errorMsg.innerText = result.message || 'Gagal menghapus data';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+                errorMsg.innerText = 'Terjadi kesalahan saat menghapus';
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        // Keyboard handler for modal
+        document.getElementById('deletePassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') confirmDelete();
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

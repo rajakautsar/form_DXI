@@ -1,9 +1,26 @@
+# Allow all access to admin panel
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
+# URL rewriting for clean URLs
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /form_DXI/admin/
-    
+
     # Remove .php extension
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.+?)/?$ $1.php [L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
 </IfModule>

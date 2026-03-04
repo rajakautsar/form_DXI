@@ -17,6 +17,11 @@ ini_set('log_errors', 1);
 // Set response header
 header('Content-Type: application/json');
 
+// ============================================
+// DATABASE CONNECTION
+// ============================================
+require_once __DIR__ . '/config/database.php';
+
 // CORS headers (adjust as needed)
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -127,7 +132,7 @@ $data = [
     'phoneNumber' => sanitizeInput($_POST['phoneNumber'] ?? ''),
     'instagram' => sanitizeInput($_POST['instagram'] ?? ''),
     'address' => sanitizeInput($_POST['address'] ?? ''),
-    'category' => sanitizeInput($_POST['category'] ?? ''),
+    'category' => strtolower(trim($_POST['category'] ?? '')), // EXPLICIT: lowercase trim NO HTML SPECIAL CHARS
     'photoTitle' => sanitizeInput($_POST['photoTitle'] ?? ''),
     'camera' => sanitizeInput($_POST['camera'] ?? ''),
     'lens' => sanitizeInput($_POST['lens'] ?? ''),
@@ -163,8 +168,12 @@ if (empty($data['address'])) {
     $errors[] = 'Alamat harus diisi';
 }
 
-if (empty($data['category']) || !in_array($data['category'], ['macro', 'wide'])) {
-    $errors[] = 'Pilih kategori lomba dengan benar';
+// CRITICAL: Validate category - must be exactly 'macro' or 'wide'
+if (empty($data['category'])) {
+    $errors[] = 'Pilih kategori lomba (Macro Angle atau Wide Angle)';
+} elseif (!in_array($data['category'], ['macro', 'wide'], true)) {
+    // Strict comparison to prevent type juggling
+    $errors[] = 'Kategori tidak valid. Harus: macro atau wide. Diterima: ' . htmlspecialchars($data['category']);
 }
 
 if (empty($data['photoTitle'])) {
@@ -237,6 +246,19 @@ try {
     $photoFiles = [];
     $photoCount = count($_FILES['photoFile']['name']);
     
+    // Determine target directory based on CATEGORY (macro atau wide)
+    // This is the CRITICAL logic for file organization
+    if ($data['category'] === 'macro') {
+        $photoDestDir = $macroDir;
+        $categoryLabel = 'Macro Angle';
+    } elseif ($data['category'] === 'wide') {
+        $photoDestDir = $wideDir;
+        $categoryLabel = 'Wide Angle';
+    } else {
+        throw new Exception('Kategori tidak valid: ' . htmlspecialchars($data['category']));
+    }
+    
+    // Upload each photo file to the appropriate category folder
     for ($i = 0; $i < $photoCount; $i++) {
         $photoFile = [
             'name' => $_FILES['photoFile']['name'][$i],
@@ -245,13 +267,10 @@ try {
         ];
         
         $newPhotoName = generateUniqueFilename($photoFile['name']);
-        
-        // Determine destination based on category
-        $photoDestDir = ($data['category'] === 'macro') ? $macroDir : $wideDir;
         $photoPath = $photoDestDir . $newPhotoName;
         
         if (!move_uploaded_file($photoFile['tmp_name'], $photoPath)) {
-            throw new Exception('Gagal menyimpan file karya ' . ($i + 1));
+            throw new Exception('Gagal menyimpan file karya ' . ($i + 1) . ' ke folder ' . htmlspecialchars($categoryLabel));
         }
         
         $photoFiles[] = $newPhotoName;
@@ -281,61 +300,111 @@ try {
     }
 
     // ============================================
-    // SAVE SUBMISSION DATA
+    // SAVE SUBMISSION DATA TO MYSQL DATABASE
     // ============================================
 
-    // Create submission record
-    $submission = [
-        'id' => uniqid('DXI_', true),
-        'timestamp' => date('Y-m-d H:i:s'),
-        'fullName' => $data['fullName'],
-        'phoneNumber' => $data['phoneNumber'],
-        'instagram' => $data['instagram'],
-        'address' => $data['address'],
-        'category' => $data['category'],
-        'photoTitle' => $data['photoTitle'],
-        'photoFiles' => $photoFiles,
-        'photoCount' => count($photoFiles),
-        'proofFile' => $newProofName,
-        'exifFile' => $newExifName,
-        'agreement' => $data['agreement']
-    ];
+    // Generate unique UUID
+    $submission_uuid = 'DXI_' . uniqid() . '_' . time();
 
-    // Save to JSON file (gunakan database untuk production)
-    $submissionsFile = $uploadDir . 'submissions.json';
-    $submissions = [];
-    
-    if (file_exists($submissionsFile)) {
-        $submissions = json_decode(file_get_contents($submissionsFile), true);
-    }
-    
-    $submissions[] = $submission;
-    
-    if (!file_put_contents($submissionsFile, json_encode($submissions, JSON_PRETTY_PRINT))) {
-        throw new Exception('Gagal menyimpan data pendaftaran');
+    // Prepare data for database insert
+    $stmt = $mysqli->prepare(
+        "INSERT INTO submissions (
+            uuid, full_name, phone_number, instagram, address, 
+            category, category_label, photo_title, photo_count, 
+            photo_files, proof_file, exif_file, 
+            camera, lens, shutter, aperture, iso, location,
+            agreement, ip_address, user_agent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+
+    if (!$stmt) {
+        throw new Exception('Database prepare error: ' . $mysqli->error);
     }
 
-    // ============================================
-    // SEND CONFIRMATION EMAIL (OPTIONAL)
-    // ============================================
+    // Bind parameters
+    $photo_files_json = json_encode($photoFiles);
+    $agreement_int = $data['agreement'] ? 1 : 0;
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-    // $to = $data['email']; // jika ada email field
-    // $subject = "Konfirmasi Pendaftaran - Kompetisi Fotografi DXI";
-    // $message = "Terima kasih telah mendaftar, {$data['fullName']}!";
-    // mail($to, $subject, $message);
+    $stmt->bind_param(
+        'ssssssssissssssssisss',
+        $submission_uuid,
+        $data['fullName'],
+        $data['phoneNumber'],
+        $data['instagram'],
+        $data['address'],
+        $data['category'],
+        $categoryLabel,
+        $data['photoTitle'],
+        $photoCount,
+        $photo_files_json,
+        $newProofName,
+        $newExifName,
+        $data['camera'],
+        $data['lens'],
+        $data['shutter'],
+        $data['aperture'],
+        $data['iso'],
+        $data['location'],
+        $agreement_int,
+        $ip_address,
+        $user_agent
+    );
 
-    // ============================================
-    // SUCCESS RESPONSE
-    // ============================================
+    // Execute insert
+    if (!$stmt->execute()) {
+        throw new Exception('Database insert error: ' . $stmt->error);
+    }
+
+    // Get last insert ID
+    $submission_id = $stmt->insert_id;
+    $stmt->close();
+
+    // Track photo files (optional - untuk audit trail)
+    foreach ($photoFiles as $photoFile) {
+        $stmt = $mysqli->prepare(
+            "INSERT INTO photo_files (submission_id, file_name, file_type, category) 
+             VALUES (?, ?, ?, ?)"
+        );
+        $file_type = 'photo';
+        $stmt->bind_param('isss', $submission_id, $photoFile, $file_type, $data['category']);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Track proof file
+    $stmt = $mysqli->prepare(
+        "INSERT INTO photo_files (submission_id, file_name, file_type) 
+         VALUES (?, ?, ?)"
+    );
+    $file_type = 'proof';
+    $stmt->bind_param('iss', $submission_id, $newProofName, $file_type);
+    $stmt->execute();
+    $stmt->close();
+
+    // Track exif file
+    $stmt = $mysqli->prepare(
+        "INSERT INTO photo_files (submission_id, file_name, file_type) 
+         VALUES (?, ?, ?)"
+    );
+    $file_type = 'exif';
+    $stmt->bind_param('iss', $submission_id, $newExifName, $file_type);
+    $stmt->execute();
+    $stmt->close();
+
+
 
     http_response_code(200);
     echo json_encode([
         'success' => true,
         'message' => 'Pendaftaran berhasil! Terima kasih telah mengikuti kompetisi kami.',
-        'submissionId' => $submission['id'],
+        'submissionId' => $submission_uuid,
         'category' => $data['category'],
+        'categoryLabel' => $categoryLabel,
         'photoTitle' => $data['photoTitle'],
-        'photoCount' => $submission['photoCount']
+        'photoCount' => $photoCount,
+        'folder' => 'uploads/' . $data['category'] . '/'  // Show where files were stored
     ]);
 
 } catch (Exception $e) {

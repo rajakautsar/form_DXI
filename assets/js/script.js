@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
     fileInputs.forEach(fileInput => {
         const wrapper = fileInput.parentElement;
         const label = wrapper.querySelector('.file-input-label');
+        const isPhotoInput = fileInput.id === 'photoFile';
+        
+        // Counter untuk multiple photo files
+        fileInput.photoCount = 0;
 
         // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -37,16 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.addEventListener('drop', (e) => {
             const droppedFiles = e.dataTransfer.files;
             if (droppedFiles && droppedFiles.length > 0) {
-                try {
-                    const dataTransfer = new DataTransfer();
-                    for (let i = 0; i < droppedFiles.length; i++) {
-                        dataTransfer.items.add(droppedFiles[i]);
-                    }
-                    fileInput.files = dataTransfer.files;
-                    updateFileInput(fileInput);
-                } catch(err) {
-                    console.warn('Drop error:', err);
-                }
+                fileInput.files = droppedFiles;
+                updateFileInput(fileInput);
             }
             label.style.borderColor = 'var(--primary-color)';
             label.style.background = 'linear-gradient(135deg, rgba(0, 102, 204, 0.05) 0%, rgba(0, 168, 204, 0.05) 100%)';
@@ -58,42 +54,11 @@ document.addEventListener('DOMContentLoaded', function() {
             fileInput.click();
         });
 
-        // File change - for photo files, append to existing; for others, replace
+        // File change handler
         fileInput.addEventListener('change', () => {
-            // For photoFile, combine new files with existing ones
-            if (fileInput.id === 'photoFile' && fileInput.files.length > 0) {
-                const newFiles = fileInput.files;
-                const existingFiles = Array.from(fileInput.files); // Current files
-                
-                // Get previously stored files if any (before they get replaced)
-                const storedFiles = fileInput._storedFiles || [];
-                
-                // Combine stored files with new selection
-                const allFiles = [...storedFiles, ...Array.from(newFiles)];
-                
-                // Check max 3 limit
-                if (allFiles.length > 3) {
-                    showError(fileInput, 'Maksimal 3 file dapat dipilih');
-                    fileInput._storedFiles = storedFiles; // Keep previous
-                    fileInput.value = '';
-                    return;
-                }
-                
-                // Store all files using DataTransfer
-                try {
-                    const dataTransfer = new DataTransfer();
-                    allFiles.forEach(file => dataTransfer.items.add(file));
-                    fileInput.files = dataTransfer.files;
-                    fileInput._storedFiles = allFiles; // Save for next time
-                } catch(err) {
-                    console.warn('File combine error:', err);
-                }
-            } else {
-                // For other file inputs, store normally
-                fileInput._storedFiles = Array.from(fileInput.files);
+            if (fileInput.files && fileInput.files.length > 0) {
+                updateFileInput(fileInput);
             }
-            
-            updateFileInput(fileInput);
         });
     });
 
@@ -379,14 +344,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Build FormData including files
         const formData = new FormData();
+        
         // Append simple fields
-        ['fullName','phoneNumber','instagram','address','category','photoTitle','agreement'].forEach(k => {
+        ['fullName','phoneNumber','instagram','address','photoTitle','agreement'].forEach(k => {
             const el = document.getElementsByName(k)[0];
             if (el) {
                 if (el.type === 'checkbox') formData.append(k, el.checked ? '1' : '0');
                 else formData.append(k, el.value);
             }
         });
+        
+        // Handle category radio buttons (must get CHECKED element, not first one)
+        const categoryElement = document.querySelector('input[name="category"]:checked');
+        if (categoryElement) {
+            formData.append('category', categoryElement.value);
+        }
 
         // Append photo files (preserve order)
         Array.from(photo.files).forEach(f => formData.append('photoFile[]', f, f.name));
