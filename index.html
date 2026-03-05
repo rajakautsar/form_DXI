@@ -33,8 +33,8 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phoneNumber" class="required">No. HP (WhatsApp)</label>
-                        <input type="text" id="phoneNumber" name="phoneNumber" inputmode="numeric" pattern="[0-9+\-]*" placeholder="+62..." required>
-                        <small>Format: +62 atau 08</small>
+                        <input type="text" id="phoneNumber" name="phoneNumber" inputmode="numeric" pattern="[0-9]*" placeholder="+62..." required>
+                        <small>Format: Hanya angka (contoh: 628123456789 atau 08123456789)</small>
                     </div>
 
                     <div class="form-group">
@@ -51,13 +51,21 @@
                 <div class="form-group">
                     <label for="proofFile" class="required">Bukti/Screenshot Follow dan Repost</label>
                     <div class="file-input-wrapper">
-                        <input type="file" id="proofFile" name="proofFile" accept="image/*" required>
+                        <input type="file" id="proofFile" name="proofFile[]" accept="image/jpeg,image/png" multiple required>
                         <span class="file-input-label">
                             <i class="icon">📸</i>
-                            <span>Pilih File atau Drag & Drop</span>
+                            <span>Pilih File Bukti (Maks 2) atau Drag & Drop</span>
                         </span>
                     </div>
-                    <small>Format: JPG, PNG (Max: 5MB)</small>
+                    <small>Format: JPG, JPEG, PNG | Maksimal 2 file | Masing-masing max 5MB</small>
+                    
+                    <!-- File List Display -->
+                    <div id="proofFileList" class="file-list" style="display: none;">
+                        <div class="file-list-header">
+                            <h4>📋 File Bukti yang Sudah Dipilih</h4>
+                        </div>
+                        <div id="proofFileItems" class="file-list-items"></div>
+                    </div>
                 </div>
             </section>
 
@@ -150,15 +158,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="exifFile" class="required">File Exif Data</label>
+                    <label for="exifFile" class="required">File Exif Data (Untuk Bukti Follow dan Karya)</label>
                     <div class="file-input-wrapper">
-                        <input type="file" id="exifFile" name="exifFile" accept=".txt,.pdf,.xlsx,.xls,.png" required>
+                        <input type="file" id="exifFile" name="exifFile[]" accept=".txt,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" multiple required>
                         <span class="file-input-label">
                             <i class="icon">📋</i>
-                            <span>Pilih File Exif Data atau Drag & Drop</span>
+                            <span>Pilih File Exif Data (Maks 2) atau Drag & Drop</span>
                         </span>
                     </div>
-                    <small>Format: TXT, PDF, XLSX, PNG (Max: 5MB) | Berisi data teknis: Kamera, Lensa, Shutter Speed, Aperture, ISO, Lokasi</small>
+                    <small>Format: TXT, PDF, XLSX, PNG, JPG (Max: 5MB per file) | Berisi data teknis: Kamera, Lensa, Shutter Speed, Aperture, ISO, Lokasi</small>
+                    
+                    <!-- File List Display -->
+                    <div id="exifFileList" class="file-list" style="display: none;">
+                        <div class="file-list-header">
+                            <h4>📋 File Exif yang Sudah Dipilih</h4>
+                        </div>
+                        <div id="exifFileItems" class="file-list-items"></div>
+                    </div>
                 </div>
             </section>
 

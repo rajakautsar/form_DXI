@@ -208,21 +208,51 @@ if (!isset($_FILES['photoFile']) || empty($_FILES['photoFile']['name'][0])) {
     }
 }
 
-if (!isset($_FILES['proofFile']) || $_FILES['proofFile']['error'] === UPLOAD_ERR_NO_FILE) {
-    $errors[] = 'File bukti harus diupload';
+if (!isset($_FILES['proofFile']) || empty($_FILES['proofFile']['name'][0])) {
+    $errors[] = 'File bukti follow & repost harus diupload (minimal 1)';
 } else {
-    $proofValidation = validateFile($_FILES['proofFile'], $maxFileSize, $allowedMimes);
-    if (!$proofValidation['valid']) {
-        $errors[] = 'File bukti: ' . $proofValidation['message'];
+    // Validate multiple proof files (JPG and PNG, max 2)
+    $proofCount = count($_FILES['proofFile']['name']);
+    if ($proofCount > 2) {
+        $errors[] = 'Maksimal hanya 2 file bukti yang diizinkan';
+    } else {
+        $proofMimes = ['image/jpeg', 'image/png']; // JPG and PNG
+        for ($i = 0; $i < $proofCount; $i++) {
+            $proofValidation = validateFile([
+                'name' => $_FILES['proofFile']['name'][$i],
+                'tmp_name' => $_FILES['proofFile']['tmp_name'][$i],
+                'size' => $_FILES['proofFile']['size'][$i],
+                'error' => $_FILES['proofFile']['error'][$i]
+            ], 5 * 1024 * 1024, $proofMimes);
+            
+            if (!$proofValidation['valid']) {
+                $errors[] = 'File bukti ' . ($i + 1) . ': ' . $proofValidation['message'];
+            }
+        }
     }
 }
 
-if (!isset($_FILES['exifFile']) || $_FILES['exifFile']['error'] === UPLOAD_ERR_NO_FILE) {
-    $errors[] = 'File Exif Data harus diupload';
+if (!isset($_FILES['exifFile']) || empty($_FILES['exifFile']['name'][0])) {
+    $errors[] = 'File Exif Data harus diupload (minimal 1)';
 } else {
-    $exifValidation = validateFile($_FILES['exifFile'], 5 * 1024 * 1024, ['text/plain', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png']);
-    if (!$exifValidation['valid']) {
-        $errors[] = 'File Exif Data: ' . $exifValidation['message'];
+    // Validate multiple exif files (max 2)
+    $exifCount = count($_FILES['exifFile']['name']);
+    if ($exifCount > 2) {
+        $errors[] = 'Maksimal hanya 2 file Exif Data yang diizinkan';
+    } else {
+        $exifMimes = ['text/plain', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png', 'image/jpeg'];
+        for ($i = 0; $i < $exifCount; $i++) {
+            $exifValidation = validateFile([
+                'name' => $_FILES['exifFile']['name'][$i],
+                'tmp_name' => $_FILES['exifFile']['tmp_name'][$i],
+                'size' => $_FILES['exifFile']['size'][$i],
+                'error' => $_FILES['exifFile']['error'][$i]
+            ], 5 * 1024 * 1024, $exifMimes);
+            
+            if (!$exifValidation['valid']) {
+                $errors[] = 'File Exif Data ' . ($i + 1) . ': ' . $exifValidation['message'];
+            }
+        }
     }
 }
 
@@ -276,27 +306,51 @@ try {
         $photoFiles[] = $newPhotoName;
     }
 
-    // Upload proof file
-    $proofFile = $_FILES['proofFile'];
-    $newProofName = generateUniqueFilename($proofFile['name']);
-    $proofPath = $proofDir . $newProofName;
+    // Upload proof files (multiple, max 2)
+    $proofFiles = [];
+    $proofCount = count($_FILES['proofFile']['name']);
     
-    if (!move_uploaded_file($proofFile['tmp_name'], $proofPath)) {
-        throw new Exception('Gagal menyimpan file bukti');
+    for ($i = 0; $i < $proofCount; $i++) {
+        $proofFile = [
+            'name' => $_FILES['proofFile']['name'][$i],
+            'tmp_name' => $_FILES['proofFile']['tmp_name'][$i],
+            'size' => $_FILES['proofFile']['size'][$i]
+        ];
+        
+        $newProofName = generateUniqueFilename($proofFile['name']);
+        $proofPath = $proofDir . $newProofName;
+        
+        if (!move_uploaded_file($proofFile['tmp_name'], $proofPath)) {
+            throw new Exception('Gagal menyimpan file bukti ' . ($i + 1));
+        }
+        
+        $proofFiles[] = $newProofName;
     }
 
-    // Upload exif file
-    $exifFile = $_FILES['exifFile'];
-    $newExifName = generateUniqueFilename($exifFile['name']);
-    $exifPath = $uploadDir . 'exif/' . $newExifName;
+    // Upload exif files (multiple, max 2)
+    $exifFiles = [];
+    $exifCount = count($_FILES['exifFile']['name']);
     
     // Create exif directory if not exists
     if (!is_dir($uploadDir . 'exif/')) {
         mkdir($uploadDir . 'exif/', 0755, true);
     }
     
-    if (!move_uploaded_file($exifFile['tmp_name'], $exifPath)) {
-        throw new Exception('Gagal menyimpan file Exif Data');
+    for ($i = 0; $i < $exifCount; $i++) {
+        $exifFile = [
+            'name' => $_FILES['exifFile']['name'][$i],
+            'tmp_name' => $_FILES['exifFile']['tmp_name'][$i],
+            'size' => $_FILES['exifFile']['size'][$i]
+        ];
+        
+        $newExifName = generateUniqueFilename($exifFile['name']);
+        $exifPath = $uploadDir . 'exif/' . $newExifName;
+        
+        if (!move_uploaded_file($exifFile['tmp_name'], $exifPath)) {
+            throw new Exception('Gagal menyimpan file Exif Data ' . ($i + 1));
+        }
+        
+        $exifFiles[] = $newExifName;
     }
 
     // ============================================
@@ -323,6 +377,8 @@ try {
 
     // Bind parameters
     $photo_files_json = json_encode($photoFiles);
+    $proof_files_json = json_encode($proofFiles);
+    $exif_files_json = json_encode($exifFiles);
     $agreement_int = $data['agreement'] ? 1 : 0;
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
@@ -339,8 +395,8 @@ try {
         $data['photoTitle'],
         $photoCount,
         $photo_files_json,
-        $newProofName,
-        $newExifName,
+        $proof_files_json,
+        $exif_files_json,
         $data['camera'],
         $data['lens'],
         $data['shutter'],
@@ -373,25 +429,29 @@ try {
         $stmt->close();
     }
 
-    // Track proof file
-    $stmt = $mysqli->prepare(
-        "INSERT INTO photo_files (submission_id, file_name, file_type) 
-         VALUES (?, ?, ?)"
-    );
-    $file_type = 'proof';
-    $stmt->bind_param('iss', $submission_id, $newProofName, $file_type);
-    $stmt->execute();
-    $stmt->close();
+    // Track proof files
+    foreach ($proofFiles as $proofFile) {
+        $stmt = $mysqli->prepare(
+            "INSERT INTO photo_files (submission_id, file_name, file_type) 
+             VALUES (?, ?, ?)"
+        );
+        $file_type = 'proof';
+        $stmt->bind_param('iss', $submission_id, $proofFile, $file_type);
+        $stmt->execute();
+        $stmt->close();
+    }
 
-    // Track exif file
-    $stmt = $mysqli->prepare(
-        "INSERT INTO photo_files (submission_id, file_name, file_type) 
-         VALUES (?, ?, ?)"
-    );
-    $file_type = 'exif';
-    $stmt->bind_param('iss', $submission_id, $newExifName, $file_type);
-    $stmt->execute();
-    $stmt->close();
+    // Track exif files
+    foreach ($exifFiles as $exifFile) {
+        $stmt = $mysqli->prepare(
+            "INSERT INTO photo_files (submission_id, file_name, file_type) 
+             VALUES (?, ?, ?)"
+        );
+        $file_type = 'exif';
+        $stmt->bind_param('iss', $submission_id, $exifFile, $file_type);
+        $stmt->execute();
+        $stmt->close();
+    }
 
 
 

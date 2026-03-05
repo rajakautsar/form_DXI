@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    FORM INTERACTIVITY & VALIDATION - CLEAN VERSION
    ============================================ */
 
@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('competitionForm');
     const fileInputs = document.querySelectorAll('input[type="file"]');
     const categoryCards = document.querySelectorAll('.category-card');
+
+    // Storage for accumulated files
+    const storedFiles = {
+        photoFile: [],
+        proofFile: [],
+        exifFile: []
+    };
 
     // ============================================
     // SETUP FILE INPUT HANDLERS
@@ -15,8 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const label = wrapper.querySelector('.file-input-label');
         const isPhotoInput = fileInput.id === 'photoFile';
         
-        // Counter untuk multiple photo files
-        fileInput.photoCount = 0;
+        // Initialize stored files array
+        storedFiles[fileInput.id] = [];
 
         // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -41,8 +48,19 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.addEventListener('drop', (e) => {
             const droppedFiles = e.dataTransfer.files;
             if (droppedFiles && droppedFiles.length > 0) {
-                fileInput.files = droppedFiles;
-                updateFileInput(fileInput);
+                // Accumulate dropped files
+                const newFiles = Array.from(droppedFiles);
+                storedFiles[fileInput.id] = [...storedFiles[fileInput.id], ...newFiles];
+                
+                // Check max limits
+                const maxFiles = (fileInput.id === 'photoFile') ? 3 : 2;
+                if (storedFiles[fileInput.id].length > maxFiles) {
+                    showError(fileInput, `Maksimal ${maxFiles} file`);
+                    storedFiles[fileInput.id] = storedFiles[fileInput.id].slice(0, maxFiles);
+                }
+                
+                // Update the FileList
+                updateAccumulatedFiles(fileInput);
             }
             label.style.borderColor = 'var(--primary-color)';
             label.style.background = 'linear-gradient(135deg, rgba(0, 102, 204, 0.05) 0%, rgba(0, 168, 204, 0.05) 100%)';
@@ -57,10 +75,38 @@ document.addEventListener('DOMContentLoaded', function() {
         // File change handler
         fileInput.addEventListener('change', () => {
             if (fileInput.files && fileInput.files.length > 0) {
-                updateFileInput(fileInput);
+                // Accumulate files instead of replacing
+                const newFiles = Array.from(fileInput.files);
+                storedFiles[fileInput.id] = [...storedFiles[fileInput.id], ...newFiles];
+                
+                // Check max limits based on input type
+                const maxFiles = (fileInput.id === 'photoFile') ? 3 : 2;
+                if (storedFiles[fileInput.id].length > maxFiles) {
+                    showError(fileInput, `Maksimal ${maxFiles} file`);
+                    storedFiles[fileInput.id] = storedFiles[fileInput.id].slice(0, maxFiles);
+                }
+                
+                // Update the FileList with accumulated files
+                updateAccumulatedFiles(fileInput);
             }
         });
     });
+
+    // ============================================
+    // UPDATE ACCUMULATED FILES
+    // ============================================
+    function updateAccumulatedFiles(fileInput) {
+        const files = storedFiles[fileInput.id];
+        
+        try {
+            const dataTransfer = new DataTransfer();
+            files.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+            updateFileInput(fileInput);
+        } catch(err) {
+            console.warn('Error updating files:', err);
+        }
+    }
 
     // ============================================
     // UPDATE FILE INPUT DISPLAY
@@ -71,11 +117,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const files = fileInput.files;
         const label = fileInput.parentElement.querySelector('.file-input-label');
         const isPhotoFile = fileInput.id === 'photoFile';
+        const isProofFile = fileInput.id === 'proofFile';
         const isExifFile = fileInput.id === 'exifFile';
 
         // Validate file count
         if (isPhotoFile && files.length > 3) {
             showError(fileInput, 'Maksimal 3 file');
+            fileInput.value = '';
+            return;
+        }
+
+        // Validate proof file count (max 2)
+        if (isProofFile && files.length > 2) {
+            showError(fileInput, 'Maksimal 2 file');
+            fileInput.value = '';
+            return;
+        }
+
+        // Validate exif file count (max 2)
+        if (isExifFile && files.length > 2) {
+            showError(fileInput, 'Maksimal 2 file');
             fileInput.value = '';
             return;
         }
@@ -105,10 +166,26 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update file list
             updatePhotoFileList(files);
-        } else {
-            const file = files[0];
-            const icon = isExifFile ? '📋' : '📸';
-            label.innerHTML = `<i class="icon">${icon}</i><span><strong>${file.name}</strong><br/>(${formatSize(file.size)})</span>`;
+        } else if (isProofFile) {
+            let html = '<div style="text-align: left;">';
+            for (let i = 0; i < files.length; i++) {
+                html += `<div>📄 ${files[i].name} (${formatSize(files[i].size)})</div>`;
+            }
+            html += '</div>';
+            label.innerHTML = `<i class="icon">📸</i>${html}`;
+            
+            // Update proof file list
+            updateProofFileList(files);
+        } else if (isExifFile) {
+            let html = '<div style="text-align: left;">';
+            for (let i = 0; i < files.length; i++) {
+                html += `<div>📄 ${files[i].name} (${formatSize(files[i].size)})</div>`;
+            }
+            html += '</div>';
+            label.innerHTML = `<i class="icon">📋</i>${html}`;
+            
+            // Update exif file list
+            updateExifFileList(files);
         }
 
         clearError(fileInput);
@@ -148,30 +225,110 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================
+    // UPDATE PROOF FILE LIST DISPLAY
+    // ============================================
+    function updateProofFileList(files) {
+        const listContainer = document.getElementById('proofFileList');
+        const listItems = document.getElementById('proofFileItems');
+
+        if (!files || files.length === 0) {
+            listContainer.style.display = 'none';
+            return;
+        }
+
+        listContainer.style.display = 'block';
+        listItems.innerHTML = '';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-list-item';
+            fileItem.innerHTML = `
+                <div class="file-item-info">
+                    <div class="file-item-icon">📸</div>
+                    <div class="file-item-details">
+                        <div class="file-item-name">${i + 1}. ${file.name}</div>
+                        <div class="file-item-size">${formatSize(file.size)}</div>
+                    </div>
+                </div>
+                <button type="button" class="file-item-remove" onclick="removeProofFile(${i})" title="Hapus file">✕</button>
+            `;
+            listItems.appendChild(fileItem);
+        }
+    }
+
+    // ============================================
+    // UPDATE EXIF FILE LIST DISPLAY
+    // ============================================
+    function updateExifFileList(files) {
+        const listContainer = document.getElementById('exifFileList');
+        const listItems = document.getElementById('exifFileItems');
+
+        if (!files || files.length === 0) {
+            listContainer.style.display = 'none';
+            return;
+        }
+
+        listContainer.style.display = 'block';
+        listItems.innerHTML = '';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-list-item';
+            fileItem.innerHTML = `
+                <div class="file-item-info">
+                    <div class="file-item-icon">📋</div>
+                    <div class="file-item-details">
+                        <div class="file-item-name">${i + 1}. ${file.name}</div>
+                        <div class="file-item-size">${formatSize(file.size)}</div>
+                    </div>
+                </div>
+                <button type="button" class="file-item-remove" onclick="removeExifFile(${i})" title="Hapus file">✕</button>
+            `;
+            listItems.appendChild(fileItem);
+        }
+    }
+
+    // ============================================
     // REMOVE PHOTO FILE
     // ============================================
     window.removePhotoFile = function(index) {
-        const photoInput = document.getElementById('photoFile');
-        const files = Array.from(photoInput.files);
+        storedFiles.photoFile.splice(index, 1);
         
-        if (files.length > index) {
-            files.splice(index, 1);
-            photoInput._storedFiles = files; // Update stored files
-            
-            if (files.length === 0) {
-                photoInput.value = '';
-                document.getElementById('photoFileList').style.display = 'none';
-            } else {
-                // Re-assign files using DataTransfer
-                try {
-                    const dataTransfer = new DataTransfer();
-                    files.forEach(file => dataTransfer.items.add(file));
-                    photoInput.files = dataTransfer.files;
-                    updatePhotoFileList(photoInput.files);
-                } catch(err) {
-                    console.warn('Remove file error:', err);
-                }
-            }
+        if (storedFiles.photoFile.length === 0) {
+            document.getElementById('photoFile').value = '';
+            document.getElementById('photoFileList').style.display = 'none';
+        } else {
+            updateAccumulatedFiles(document.getElementById('photoFile'));
+        }
+    };
+
+    // ============================================
+    // REMOVE PROOF FILE
+    // ============================================
+    window.removeProofFile = function(index) {
+        storedFiles.proofFile.splice(index, 1);
+        
+        if (storedFiles.proofFile.length === 0) {
+            document.getElementById('proofFile').value = '';
+            document.getElementById('proofFileList').style.display = 'none';
+        } else {
+            updateAccumulatedFiles(document.getElementById('proofFile'));
+        }
+    };
+
+    // ============================================
+    // REMOVE EXIF FILE
+    // ============================================
+    window.removeExifFile = function(index) {
+        storedFiles.exifFile.splice(index, 1);
+        
+        if (storedFiles.exifFile.length === 0) {
+            document.getElementById('exifFile').value = '';
+            document.getElementById('exifFileList').style.display = 'none';
+        } else {
+            updateAccumulatedFiles(document.getElementById('exifFile'));
         }
     };
 
@@ -186,10 +343,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (id === 'photoFile') {
             maxSize = 20 * 1024 * 1024;
             validTypes = ['image/jpeg', 'image/png', 'image/tiff'];
+        } else if (id === 'proofFile') {
+            // Proof file: JPG only, max 5MB
+            maxSize = 5 * 1024 * 1024;
+            validTypes = ['image/jpeg'];
         } else if (id === 'exifFile') {
             maxSize = 5 * 1024 * 1024;
             validTypes = ['text/plain', 'application/pdf', 'application/vnd.ms-excel', 
-                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                         'image/png', 'image/jpeg'];
         } else {
             validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         }
@@ -289,6 +451,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================
+    // PHONE NUMBER INPUT - FILTER NUMBERS ONLY
+    // ============================================
+    const phoneInput = document.getElementById('phoneNumber');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            // Remove all non-digit characters
+            this.value = this.value.replace(/[^\d]/g, '');
+        });
+    }
+
+    // ============================================
     // CATEGORY SELECTION
     // ============================================
     categoryCards.forEach(card => {
@@ -328,17 +501,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (photo.files.length > 3) {
-            showNotification('Max 3 file', 'warning');
+            showNotification('Max 3 file karya', 'warning');
             return;
         }
 
         if (!proof.files || proof.files.length === 0) {
-            showNotification('Upload bukti follow', 'warning');
+            showNotification('Upload bukti follow & repost (JPG)', 'warning');
+            return;
+        }
+
+        if (proof.files.length > 2) {
+            showNotification('Max 2 file bukti', 'warning');
             return;
         }
 
         if (!exif.files || exif.files.length === 0) {
             showNotification('Upload EXIF data', 'warning');
+            return;
+        }
+
+        if (exif.files.length > 2) {
+            showNotification('Max 2 file EXIF', 'warning');
             return;
         }
 
@@ -362,9 +545,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Append photo files (preserve order)
         Array.from(photo.files).forEach(f => formData.append('photoFile[]', f, f.name));
-        // Append proof and exif
-        formData.append('proofFile', proof.files[0]);
-        formData.append('exifFile', exif.files[0]);
+        
+        // Append proof files (now multiple, max 2)
+        Array.from(proof.files).forEach(f => formData.append('proofFile[]', f, f.name));
+        
+        // Append exif files (now multiple, max 2)
+        Array.from(exif.files).forEach(f => formData.append('exifFile[]', f, f.name));
 
         showNotification('Mengirim data...', 'info');
 
@@ -398,21 +584,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================
     function resetLabels() {
         fileInputs.forEach(input => {
-            input._storedFiles = []; // Clear stored files
+            // Clear stored files
+            storedFiles[input.id] = [];
+            
             const label = input.parentElement.querySelector('.file-input-label');
             if (!label) return;
             
             if (input.id === 'photoFile') {
                 label.innerHTML = `<i class="icon">🖼️</i><span>Pilih File Foto (Maks 3) atau Drag & Drop</span>`;
-                // Hide photo file list when reset
                 const photoFileList = document.getElementById('photoFileList');
                 if (photoFileList) {
                     photoFileList.style.display = 'none';
                 }
+            } else if (input.id === 'proofFile') {
+                label.innerHTML = `<i class="icon">📸</i><span>Pilih File Bukti (Maks 2 JPG) atau Drag & Drop</span>`;
+                const proofFileList = document.getElementById('proofFileList');
+                if (proofFileList) {
+                    proofFileList.style.display = 'none';
+                }
             } else if (input.id === 'exifFile') {
-                label.innerHTML = `<i class="icon">📋</i><span>Pilih File Exif Data atau Drag & Drop</span>`;
-            } else {
-                label.innerHTML = `<i class="icon">📸</i><span>Pilih File atau Drag & Drop</span>`;
+                label.innerHTML = `<i class="icon">📋</i><span>Pilih File Exif Data (Maks 2) atau Drag & Drop</span>`;
+                const exifFileList = document.getElementById('exifFileList');
+                if (exifFileList) {
+                    exifFileList.style.display = 'none';
+                }
             }
         });
     }
@@ -506,6 +701,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             }
+            
+            // Clear stored files when loading draft
+            storedFiles.photoFile = [];
+            storedFiles.proofFile = [];
+            storedFiles.exifFile = [];
         } catch(e) {
             // Ignore load errors
         }

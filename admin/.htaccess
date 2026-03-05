@@ -11,7 +11,7 @@
 # URL rewriting for clean URLs
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /form_DXI/admin/
+    RewriteBase admin/
 
     # Remove .php extension
     RewriteCond %{REQUEST_FILENAME} !-f
