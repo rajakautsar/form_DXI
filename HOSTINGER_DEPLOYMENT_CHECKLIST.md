@@ -22,6 +22,7 @@
 - [ ] Form displays correctly
 - [ ] Submit test entry
 - [ ] Check `uploads/submissions.json` updated
+ko;k
 
 ### Phase 4: Setup Admin Access ⭐
 - [ ] Open: https://underwatershootout.deepextremeindonesia.com/admin/admin.html
